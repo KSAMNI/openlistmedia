@@ -873,7 +873,7 @@ class MediaWallService:
                 return None
             return text
 
-    def get_recent_play_history(self, limit: int = 10) -> list[dict[str, Any]]:
+    def get_recent_play_history(self, limit: int | None = None) -> list[dict[str, Any]]:
         items = self.db.get_recent_play_history(limit)
         normalized: list[dict[str, Any]] = []
         for item in items:

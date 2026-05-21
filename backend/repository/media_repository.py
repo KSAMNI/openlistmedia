@@ -551,10 +551,12 @@ class MediaWallDB:
             )
             conn.commit()
 
-    def get_recent_play_history(self, limit: int = 10) -> list[dict[str, Any]]:
+    def get_recent_play_history(self, limit: int | None = None) -> list[dict[str, Any]]:
+        limit_sql = "LIMIT ?" if limit is not None else ""
+        params: tuple[Any, ...] = (limit,) if limit is not None else ()
         with self._connect() as conn:
             rows = conn.execute(
-                """
+                f"""
                 SELECT recent.id,
                        COALESCE(current_media.id, recent.media_id) AS media_id,
                        recent.media_title,
@@ -609,9 +611,9 @@ class MediaWallDB:
                    )
                   )
                 ORDER BY recent.played_at DESC, recent.id DESC, current_media.updated_at DESC, current_media.id DESC
-                LIMIT ?
+                {limit_sql}
                 """,
-                (limit,),
+                params,
             ).fetchall()
         return [dict(row) for row in rows]
 

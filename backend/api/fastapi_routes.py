@@ -162,7 +162,7 @@ def create_media_router(api_prefix: str) -> APIRouter:
 
     @router.get("/recent-plays")
     def recent_plays(service=Depends(get_service)) -> dict[str, Any]:
-        payload = service.get_recent_play_history(limit=10)
+        payload = service.get_recent_play_history()
         return ok_response(payload)
 
     @router.delete("/recent-plays/{history_id}")
