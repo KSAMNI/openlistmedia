@@ -5,6 +5,7 @@ import type {
   AppSettingsDto,
   CategoryTreeDto,
   CreatePlaylistResponseDto,
+  DeletePlayHistoryResponseDto,
   LastPlayedEpisodeDto,
   MediaDetailDto,
   PlayedEpisodesResponseDto,
@@ -218,6 +219,14 @@ export function saveSettings(payload: AppSettingsDto) {
 
 export function getRecentPlayHistory(signal?: AbortSignal) {
   return requestJson<PlayHistoryDto[]>('/recent-plays', { signal });
+}
+
+export function deletePlayHistory(historyId: number) {
+  const passcode = getAccessPasscode();
+  return requestJson<DeletePlayHistoryResponseDto>(`/recent-plays/${historyId}`, {
+    method: 'DELETE',
+    headers: passcode ? { 'X-Access-Passcode': passcode } : undefined,
+  });
 }
 
 export async function recordPlayHistory(mediaId: number, filePath?: string | null): Promise<void> {

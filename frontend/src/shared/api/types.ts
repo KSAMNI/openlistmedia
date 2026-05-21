@@ -109,6 +109,10 @@ export interface RefreshResponseDto {
   openlist_refreshed?: boolean;
 }
 
+export interface DeletePlayHistoryResponseDto {
+  deleted: boolean;
+}
+
 export interface AccessLoginResponseDto {
   role: 'admin' | 'visitor';
 }

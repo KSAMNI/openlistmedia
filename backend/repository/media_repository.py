@@ -615,6 +615,15 @@ class MediaWallDB:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def delete_play_history(self, history_id: int) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM play_history WHERE id = ?",
+                (history_id,),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+
     def get_media_item_by_path(
         self, category_path: str, media_path: str
     ) -> dict[str, Any] | None:

@@ -887,3 +887,6 @@ class MediaWallService:
                 }
             )
         return normalized
+
+    def delete_play_history(self, history_id: int) -> bool:
+        return self.db.delete_play_history(history_id)

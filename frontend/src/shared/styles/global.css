@@ -690,6 +690,7 @@ button:disabled {
 }
 
 .poster {
+  position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
   border-radius: 14px;
@@ -702,6 +703,49 @@ button:disabled {
   color: var(--poster-fallback-text);
   transition: transform 160ms ease, box-shadow 160ms ease;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+}
+
+.poster-delete-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(15, 23, 42, 0.76);
+  color: #ffffff;
+  opacity: 0;
+  transform: scale(0.92);
+  transition: opacity 160ms ease, transform 160ms ease, background 160ms ease;
+  z-index: 2;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(8px);
+}
+
+.poster-delete-button svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.poster-delete-button:hover,
+.poster-delete-button:focus-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.poster-delete-button:hover {
+  background: #ef4444;
+}
+
+.poster-delete-button:disabled {
+  opacity: 0.7;
 }
 
 .media-card-title {

@@ -29,7 +29,13 @@ export function MediaListPage() {
   const [keywordInput, setKeywordInput] = useState(keyword || '');
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const pageSize = DEFAULT_PAGE_SIZE;
-  const { data: recentPlays, loading: recentLoading, error: recentError } = useRecentPlays();
+  const {
+    data: recentPlays,
+    loading: recentLoading,
+    error: recentError,
+    deleteRecentPlay,
+    deletingHistoryId,
+  } = useRecentPlays();
   const { data: rootCategories } = useCategoryTree();
   const topLevelPath = useMemo(() => {
     const rootChildren = rootCategories?.children || [];
@@ -371,9 +377,17 @@ export function MediaListPage() {
               emptyText="暂无播放记录。"
             >
               <div className="media-grid media-grid-emby">
-                {recentPlayItems.map((item) => (
-                  <MediaCard key={`${item.id}-recent`} item={item} />
-                ))}
+                {recentPlayItems.map((item, index) => {
+                  const historyId = recentPlays?.[index]?.id;
+                  return (
+                    <MediaCard
+                      key={`${item.id}-recent`}
+                      item={item}
+                      onDelete={isAdmin && historyId ? () => deleteRecentPlay(historyId) : undefined}
+                      deleting={deletingHistoryId === historyId}
+                    />
+                  );
+                })}
               </div>
             </AsyncState>
           ) : (

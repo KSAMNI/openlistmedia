@@ -165,6 +165,19 @@ def create_media_router(api_prefix: str) -> APIRouter:
         payload = service.get_recent_play_history(limit=10)
         return ok_response(payload)
 
+    @router.delete("/recent-plays/{history_id}")
+    def delete_recent_play(
+        history_id: int,
+        _admin: None = Depends(require_admin_passcode),
+        service=Depends(get_service),
+    ) -> dict[str, Any]:
+        if history_id <= 0:
+            raise APIError("bad_request", "Invalid history id.", 400)
+        deleted = service.delete_play_history(history_id)
+        if not deleted:
+            raise APIError("not_found", "Play history not found.", 404)
+        return ok_response({"deleted": True})
+
     @router.get("/playlist/{playlist_id}.m3u")
     def playlist(playlist_id: str, service=Depends(get_service)) -> Response:
         if not playlist_id:
