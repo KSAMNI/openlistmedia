@@ -14,6 +14,10 @@ from openlist_sdk.exceptions import OpenListAPIError, OpenListHTTPError
 from tmdb_sdk import TMDbAPIError, TMDbClient, TMDbHTTPError
 
 from backend.config.settings import MediaWallConfig
+from backend.logging_config import get_logger
+
+
+logger = get_logger(__name__)
 
 
 MEDIA_PATTERN = re.compile(
@@ -95,7 +99,7 @@ class OpenListScanner:
         self, category_path: str, *, refresh: bool = False
     ) -> dict[str, Any]:
         category_path = self.normalize_path(category_path)
-        print(
+        logger.info(
             "[scanner] deep category scan start "
             f"path={category_path} openlist_refresh={refresh}"
         )
@@ -123,7 +127,7 @@ class OpenListScanner:
         payload = self._build_category_payload(
             category_path, category_name, items, refresh
         )
-        print(
+        logger.info(
             "[scanner] deep category scan done "
             f"path={category_path} items={len(items)} "
             f"failed={len(self.failed_paths)}"
@@ -139,7 +143,7 @@ class OpenListScanner:
         existing_items: dict[str, dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         category_path = self.normalize_path(category_path)
-        print(
+        logger.info(
             "[scanner] shallow category scan start "
             f"path={category_path} openlist_refresh={refresh}"
         )
@@ -198,7 +202,7 @@ class OpenListScanner:
             if tmdb_client:
                 tmdb_client.close()
         items.sort(key=lambda item: (item["type"], item["title"].lower()))
-        print(
+        logger.info(
             "[scanner] shallow category scan done "
             f"path={category_path} items={len(items)} reused={len(items) - len(missing_metadata)} "
             f"new={len(missing_metadata)} failed={len(self.failed_paths)}"
@@ -212,7 +216,7 @@ class OpenListScanner:
         self, media_path: str, *, refresh: bool = False
     ) -> dict[str, Any]:
         media_path = self.normalize_path(media_path)
-        print(
+        logger.info(
             "[scanner] media item scan start "
             f"path={media_path} openlist_refresh={refresh}"
         )
@@ -245,7 +249,7 @@ class OpenListScanner:
         finally:
             if tmdb_client:
                 tmdb_client.close()
-        print(
+        logger.info(
             "[scanner] media item scan done "
             f"path={media_path} type={item.get('type')} "
             f"files={len(item.get('files') or [])} seasons={len(item.get('seasons') or [])}"
@@ -461,13 +465,13 @@ class OpenListScanner:
         year = int(media_match.group("year"))
         tmdb_id = int(media_match.group("tmdb_id"))
         media_type = inferred_media_type or "movie"
-        print(
+        logger.debug(
             "[scanner] shallow media metadata "
             f"path={media_path} tmdb_id={tmdb_id} preferred_type={media_type}"
         )
         metadata = self._fetch_tmdb_metadata(tmdb_client, media_type, tmdb_id)
         if metadata and not self._metadata_matches_media_name(metadata, title, year):
-            print(
+            logger.warning(
                 "[scanner] shallow media metadata mismatch "
                 f"path={media_path} type={media_type}"
             )
@@ -476,7 +480,7 @@ class OpenListScanner:
             fallback_type = "tv" if media_type == "movie" else "movie"
             fallback = self._fetch_tmdb_metadata(tmdb_client, fallback_type, tmdb_id)
             if fallback and self._metadata_matches_media_name(fallback, title, year):
-                print(
+                logger.info(
                     "[scanner] shallow media metadata fallback matched "
                     f"path={media_path} type={fallback_type}"
                 )
@@ -533,7 +537,7 @@ class OpenListScanner:
         title = media_match.group("title").strip()
         year = int(media_match.group("year"))
         tmdb_id = int(media_match.group("tmdb_id"))
-        print(
+        logger.info(
             "[scanner] deep media directory scan start "
             f"path={media_path} tmdb_id={tmdb_id} openlist_refresh={refresh}"
         )
@@ -598,7 +602,7 @@ class OpenListScanner:
         if media_type == "tv" and not seasons:
             seasons = self._group_loose_episodes(files)
         season_list = [seasons[number] for number in sorted(seasons)]
-        print(
+        logger.info(
             "[scanner] deep media directory scan done "
             f"path={media_path} type={media_type} files={len(files)} "
             f"seasons={len(season_list)}"
@@ -866,7 +870,7 @@ class OpenListScanner:
         with self._tmdb_cache_lock:
             if cache_key in self.tmdb_cache:
                 return self.tmdb_cache[cache_key]
-        print(f"[scanner] TMDb fetch type={media_type} id={tmdb_id}")
+        logger.debug(f"[scanner] TMDb fetch type={media_type} id={tmdb_id}")
         try:
             metadata = (
                 tmdb_client.tv_details(tmdb_id, language=self.config.tmdb_language)
@@ -876,15 +880,15 @@ class OpenListScanner:
                 )
             )
         except (TMDbAPIError, TMDbHTTPError) as exc:
-            print(f"[scanner] TMDb fetch failed type={media_type} id={tmdb_id}: {exc}")
+            logger.warning(f"[scanner] TMDb fetch failed type={media_type} id={tmdb_id}: {exc}")
             return None
         with self._tmdb_cache_lock:
             self.tmdb_cache[cache_key] = metadata
         if self.db is not None and hasattr(self.db, "upsert_tmdb_cache"):
             try:
                 self.db.upsert_tmdb_cache(cache_key, metadata)
-            except Exception as exc:
-                print(f"TMDb cache persist failed for {cache_key}: {exc}")
+            except Exception:
+                logger.exception(f"TMDb cache persist failed for {cache_key}")
         return metadata
 
     def _ensure_openlist_auth(self, client: OpenListClient) -> None:

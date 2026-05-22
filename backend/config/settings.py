@@ -22,6 +22,8 @@ class APIConfig:
     port: int
     prefix: str
     admin_token: str | None
+    log_level: str
+    access_log: bool
     cors: CORSConfig
 
 
@@ -83,6 +85,20 @@ def load_backend_config() -> BackendConfig:
                 get_value(config, "backend", "api_prefix", default="/api/v1"), "/api/v1"
             ),
             admin_token=_optional_string(admin_token),
+            log_level=_string_value(
+                _env_or_config(
+                    "MEDIA_WALL_LOG_LEVEL",
+                    get_value(config, "backend", "log_level", default="INFO"),
+                ),
+                "INFO",
+            ).upper(),
+            access_log=_bool_value(
+                _env_or_config(
+                    "MEDIA_WALL_ACCESS_LOG",
+                    get_value(config, "backend", "access_log", default=True),
+                ),
+                True,
+            ),
             cors=CORSConfig(
                 allow_origins=_string_list(
                     _env_or_config(
@@ -242,6 +258,19 @@ def _string_list(value: Any) -> list[str]:
     if "," in normalized:
         return [item.strip() for item in normalized.split(",") if item.strip()]
     return [normalized]
+
+
+def _bool_value(value: Any, default: bool = False) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on"}:
+        return True
+    if text in {"0", "false", "no", "off"}:
+        return False
+    return default
 
 
 def _validated_cron(value: Any) -> str | None:

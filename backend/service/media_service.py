@@ -13,12 +13,14 @@ from openlist_sdk import OpenListClient
 from openlist_sdk.exceptions import OpenListAPIError, OpenListHTTPError
 
 from backend.config.settings import BackendConfig, load_backend_config
+from backend.logging_config import get_logger
 from backend.repository import MediaQueryOptions, MediaWallDB
 from backend.scanner import OpenListScanner
 from config_loader import load_config, save_config
 
 
 ConfigListener = Callable[[BackendConfig], None]
+logger = get_logger(__name__)
 
 
 class MediaWallService:
@@ -178,7 +180,7 @@ class MediaWallService:
             try:
                 listener(self.config)
             except Exception as exc:
-                print(f"Config listener failed: {exc}")
+                logger.exception("Config listener failed")
 
         return {
             "restart_required": bool(restart_fields),
@@ -208,7 +210,7 @@ class MediaWallService:
         sort_order: str,
     ) -> dict[str, Any]:
         normalized_path = self._normalize_optional_path(category_path)
-        print(
+        logger.info(
             "[media] list "
             f"category={normalized_path or '<all>'} page={page} "
             f"page_size={page_size} include_descendants={include_descendants}"
@@ -217,10 +219,10 @@ class MediaWallService:
             ttl = self.config.media_wall.cache_ttl_seconds
             if not self.db.cache_is_fresh(normalized_path, ttl):
                 if self.db.category_cache_exists(normalized_path):
-                    print(f"[media] cache stale, schedule shallow refresh: {normalized_path}")
+                    logger.info(f"[media] cache stale, schedule shallow refresh: {normalized_path}")
                     self._schedule_background_refresh(normalized_path)
                 else:
-                    print(f"[media] cache missing, run shallow refresh: {normalized_path}")
+                    logger.info(f"[media] cache missing, run shallow refresh: {normalized_path}")
                     with self._get_category_lock(normalized_path):
                         if not self.db.cache_is_fresh(normalized_path, ttl):
                             self._refresh_category_shallow_locked(normalized_path)
@@ -237,7 +239,7 @@ class MediaWallService:
                 sort_order=sort_order,
             )
         )
-        print(
+        logger.info(
             "[media] list result "
             f"category={normalized_path or '<all>'} returned={len(query_result.items)} "
             f"total={query_result.total}"
@@ -255,16 +257,16 @@ class MediaWallService:
     def _schedule_background_refresh(self, normalized_path: str) -> None:
         lock = self._get_category_lock(normalized_path)
         if not lock.acquire(blocking=False):
-            print(f"[media] background refresh already running: {normalized_path}")
+            logger.info(f"[media] background refresh already running: {normalized_path}")
             return
 
         def run() -> None:
-            print(f"[media] background shallow refresh start: {normalized_path}")
+            logger.info(f"[media] background shallow refresh start: {normalized_path}")
             try:
                 self._refresh_category_shallow_locked(normalized_path)
-                print(f"[media] background shallow refresh done: {normalized_path}")
+                logger.info(f"[media] background shallow refresh done: {normalized_path}")
             except Exception as exc:
-                print(f"[media] background shallow refresh failed for {normalized_path}: {exc}")
+                logger.exception(f"[media] background shallow refresh failed for {normalized_path}")
             finally:
                 lock.release()
 
@@ -275,15 +277,15 @@ class MediaWallService:
         ).start()
 
     def get_media_detail(self, media_id: int) -> dict[str, Any] | None:
-        print(f"[media] detail request id={media_id}")
+        logger.info(f"[media] detail request id={media_id}")
         item = self.db.get_media_item(media_id)
         if item is None:
-            print(f"[media] detail not found id={media_id}")
+            logger.info(f"[media] detail not found id={media_id}")
             return None
         if self._needs_detail_scan(item):
             media_path = str(item.get("openlist_path") or "").strip()
             if media_path:
-                print(f"[media] detail needs deep scan id={media_id} path={media_path}")
+                logger.info(f"[media] detail needs deep scan id={media_id} path={media_path}")
                 refreshed = self.refresh_media_item(
                     media_path, force_remote_refresh=False
                 )
@@ -292,7 +294,7 @@ class MediaWallService:
                 if item is None:
                     return None
         item = self._ensure_media_poster(item)
-        print(
+        logger.info(
             "[media] detail ready "
             f"id={media_id} title={item.get('title')} "
             f"files={len(item.get('files') or [])} seasons={len(item.get('seasons') or [])}"
@@ -313,10 +315,10 @@ class MediaWallService:
         if item.get("poster_url"):
             return item
         media_path = str(item.get("openlist_path") or "").strip()
-        print(f"[media] poster missing, fetch TMDb metadata: {media_path}")
+        logger.info(f"[media] poster missing, fetch TMDb metadata: {media_path}")
         updated = self.scanner.fill_missing_media_poster(item)
         if updated is item or not updated.get("poster_url"):
-            print(f"[media] poster still missing after TMDb fetch: {media_path}")
+            logger.info(f"[media] poster still missing after TMDb fetch: {media_path}")
             return item
         category_path = str(item.get("category_path") or "").strip()
         media_path = str(item.get("openlist_path") or "").strip()
@@ -326,10 +328,10 @@ class MediaWallService:
             self.db.replace_media_item(category_path, media_path, updated)
             refreshed = self.db.get_media_item_by_path(category_path, media_path)
             if refreshed is not None:
-                print(f"[media] poster saved to cache: {media_path}")
+                logger.info(f"[media] poster saved to cache: {media_path}")
                 return refreshed
         except ValueError as exc:
-            print(f"Poster cache update skipped for {media_path}: {exc}")
+            logger.warning(f"Poster cache update skipped for {media_path}: {exc}")
         return updated
 
     @staticmethod
@@ -373,7 +375,7 @@ class MediaWallService:
     def _refresh_category_locked(
         self, normalized_path: str, *, force_remote_refresh: bool = False
     ) -> dict[str, Any]:
-        print(
+        logger.info(
             "[media] category deep refresh start "
             f"path={normalized_path} openlist_refresh={force_remote_refresh}"
         )
@@ -388,7 +390,7 @@ class MediaWallService:
         )
         payload["cache_hit"] = False
         self._invalidate_category_tree_cache()
-        print(
+        logger.info(
             "[media] category deep refresh done "
             f"path={normalized_path} items={payload.get('stats', {}).get('item_count', 0)}"
         )
@@ -397,7 +399,7 @@ class MediaWallService:
     def _refresh_category_shallow_locked(
         self, normalized_path: str, *, force_remote_refresh: bool = False
     ) -> dict[str, Any]:
-        print(
+        logger.info(
             "[media] category shallow refresh start "
             f"path={normalized_path} openlist_refresh={force_remote_refresh}"
         )
@@ -418,7 +420,7 @@ class MediaWallService:
         )
         payload["cache_hit"] = False
         self._invalidate_category_tree_cache()
-        print(
+        logger.info(
             "[media] category shallow refresh done "
             f"path={normalized_path} items={payload.get('stats', {}).get('item_count', 0)} "
             f"existing={len(existing_items)}"
@@ -533,9 +535,9 @@ class MediaWallService:
 
     def ensure_initial_cache(self) -> None:
         if self.db.list_category_caches():
-            print("[media] startup cache check: category cache exists, skip initial shallow scan.")
+            logger.info("[media] startup cache check: category cache exists, skip initial shallow scan.")
             return
-        print("[media] startup cache check: no category cache, schedule full shallow scan.")
+        logger.info("[media] startup cache check: no category cache, schedule full shallow scan.")
         threading.Thread(
             target=self._run_initial_full_shallow_refresh,
             daemon=True,
@@ -545,13 +547,13 @@ class MediaWallService:
     def _run_initial_full_shallow_refresh(self) -> None:
         try:
             summary = self.refresh_all_categories_shallow(force_remote_refresh=False)
-            print(
+            logger.info(
                 "[media] startup full shallow scan completed: "
                 f"{summary['refreshed_count']} categories refreshed, "
                 f"{summary['failed_count']} failures."
             )
-        except Exception as exc:
-            print(f"[media] startup full shallow scan failed: {exc}")
+        except Exception:
+            logger.exception("[media] startup full shallow scan failed")
 
     def refresh_all_categories(
         self, *, force_remote_refresh: bool = False

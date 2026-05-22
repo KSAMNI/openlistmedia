@@ -28,6 +28,8 @@ backend:
   port: 8000
   api_prefix: /api/v1
   admin_token: ''
+  log_level: INFO
+  access_log: true
   cors:
     allow_origins:
       - http://127.0.0.1:5173

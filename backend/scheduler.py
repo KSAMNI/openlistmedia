@@ -4,6 +4,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import threading
 
+from backend.logging_config import get_logger
+
+
+logger = get_logger(__name__)
+
 
 @dataclass(frozen=True)
 class CronField:
@@ -80,7 +85,7 @@ class ScheduledRefreshRunner:
 
     def start(self) -> None:
         if not self.schedule:
-            print("Scheduled refresh disabled: media_wall.refresh_cron is empty.")
+            logger.info("Scheduled refresh disabled: media_wall.refresh_cron is empty.")
             return
         if self._thread and self._thread.is_alive():
             return
@@ -91,7 +96,7 @@ class ScheduledRefreshRunner:
         )
         self._thread.start()
         next_run = self.schedule.next_after(datetime.now())
-        print(
+        logger.info(
             f"Scheduled refresh enabled with cron '{self.cron_expression}', next run at {next_run:%Y-%m-%d %H:%M}."
         )
 
@@ -121,18 +126,18 @@ class ScheduledRefreshRunner:
             if self._stop_event.wait(delay):
                 return
             if not self._run_lock.acquire(blocking=False):
-                print("Scheduled refresh skipped because a previous refresh is still running.")
+                logger.warning("Scheduled refresh skipped because a previous refresh is still running.")
                 continue
             try:
-                print(f"Scheduled refresh started at {datetime.now():%Y-%m-%d %H:%M:%S}.")
+                logger.info(f"Scheduled refresh started at {datetime.now():%Y-%m-%d %H:%M:%S}.")
                 summary = self.service.refresh_all_categories_shallow(force_remote_refresh=False)
-                print(
+                logger.info(
                     "Scheduled refresh completed: "
                     f"{summary['refreshed_count']} categories refreshed, "
                     f"{summary['failed_count']} failures."
                 )
             except Exception as exc:
-                print(f"Scheduled refresh failed: {exc}")
+                logger.exception("Scheduled refresh failed")
             finally:
                 self._run_lock.release()
 

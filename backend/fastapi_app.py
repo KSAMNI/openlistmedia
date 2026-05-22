@@ -14,8 +14,12 @@ from backend.api.fastapi_static import FrontendStaticMiddleware
 from backend.config import load_backend_config
 from backend.config.settings import BackendConfig
 from backend.dto.responses import error_response
+from backend.logging_config import configure_logging, get_logger
 from backend.scheduler import ScheduledRefreshRunner
 from backend.service import MediaWallService
+
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager
@@ -32,6 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_fastapi_app() -> FastAPI:
     config = load_backend_config()
+    configure_logging(config.api.log_level)
     service = MediaWallService(config)
     scheduler = ScheduledRefreshRunner(service, config.media_wall.refresh_cron)
 
@@ -102,7 +107,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
-        print(f"Unhandled API error: {exc}")
+        logger.exception("Unhandled API error")
         status, payload = error_response("internal_error", "Internal server error.", 500)
         return JSONResponse(status_code=status, content=payload)
 
