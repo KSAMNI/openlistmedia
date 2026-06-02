@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import re
 import threading
 import time
@@ -518,6 +517,9 @@ class OpenListScanner:
             "file_count": 0,
             "season_count": 0,
             "episode_count": 0,
+            "tmdb_episode_count": (metadata or {}).get("number_of_episodes")
+            if media_type == "tv"
+            else None,
             "files": [],
             "seasons": [],
             "scan_level": "shallow",
@@ -642,6 +644,9 @@ class OpenListScanner:
             "file_count": len(files),
             "season_count": len(season_list),
             "episode_count": sum(len(season["episodes"]) for season in season_list),
+            "tmdb_episode_count": (metadata or {}).get("number_of_episodes")
+            if media_type == "tv"
+            else None,
             "files": files,
             "seasons": season_list,
             "scan_level": "detail",

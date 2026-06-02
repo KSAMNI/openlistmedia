@@ -75,6 +75,7 @@ def to_media_detail_dto(item: dict[str, Any]) -> dict[str, Any]:
         "file_count": item.get("file_count") or 0,
         "season_count": item.get("season_count") or 0,
         "episode_count": item.get("episode_count") or 0,
+        "tmdb_episode_count": item.get("tmdb_episode_count"),
         "direct_url": item.get("direct_url"),
         "mpv_url": item.get("mpv_url"),
         "files": files,

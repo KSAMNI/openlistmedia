@@ -80,6 +80,7 @@ export interface MediaDetailDto extends MediaListItemDto {
   file_count: number;
   season_count: number;
   episode_count: number;
+  tmdb_episode_count?: number | null;
   playable_url?: string | null;
   files: MediaFileDto[];
   seasons: MediaSeasonDto[];

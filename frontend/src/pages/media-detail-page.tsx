@@ -271,6 +271,9 @@ export function MediaDetailPage() {
     }
   }
 
+  const officialEpisodeCount = data?.tmdb_episode_count || 0;
+  const localEpisodeCount = data?.episode_count || 0;
+  const displayEpisodeCount = officialEpisodeCount > 0 ? officialEpisodeCount : localEpisodeCount;
   const backdropStyle = data?.backdrop_url
     ? {
         backgroundImage: `linear-gradient(180deg, rgba(9,12,20,0.36) 0%, rgba(9,12,20,0.82) 55%, rgba(9,12,20,0.98) 100%), url(${data.backdrop_url})`,
@@ -310,6 +313,7 @@ export function MediaDetailPage() {
                 <h2 className="page-title detail-title">{toDetailTitle(data)}</h2>
                 <div className="chip-row detail-summary-chips">
                   <span className="chip">年份 {data.year || '-'}</span>
+                  {displayEpisodeCount > 0 ? <span className="chip">共 {displayEpisodeCount} 集</span> : null}
                   <span className="chip">评分 {formatRating(data.vote_average)}</span>
                   <span className="chip">分类 {data.category_label || '未分类'}</span>
                   {(data.genres || []).slice(0, 4).map((genre) => (
