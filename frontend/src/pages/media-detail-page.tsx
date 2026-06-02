@@ -166,6 +166,10 @@ export function MediaDetailPage() {
       const m3uUrl = `${window.location.origin}/api/v1/playlist/${result.id}.m3u`;
       await openWithPlayer(selectedPlayer, m3uUrl);
       if (mediaId) {
+        const representativePath = pathsToMark[0];
+        if (representativePath) {
+          recordPlayHistory(Number(mediaId), representativePath).catch(() => undefined);
+        }
         recordPlayedEpisodes(Number(mediaId), pathsToMark)
           .then((payload) => setPlayedEpisodePaths(payload.items.map((item) => item.file_path)))
           .catch(() => {
